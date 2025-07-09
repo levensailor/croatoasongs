@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CROATOA - Song Lyrics Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --text-accent: #00ff88;
+            --border-color: #333;
+            --shadow-glow: 0 0 20px rgba(0, 255, 136, 0.3);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        body {
+            background: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(0, 255, 136, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 0, 136, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(0, 136, 255, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+        
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .neon-border {
+            border: 1px solid var(--text-accent);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3), inset 0 0 10px rgba(0, 255, 136, 0.1);
+        }
+        
+        .neon-text {
+            color: var(--text-accent);
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+        
+        .song-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .song-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .song-item:hover::before {
+            left: 100%;
+        }
+        
+        .song-item:hover {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: var(--text-accent);
+            transform: translateX(4px);
+        }
+        
+        .song-item.active {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: var(--text-accent);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+            color: var(--bg-primary);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 14px;
+            box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 255, 136, 0.4);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        .btn-danger {
+            background: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+        }
+        
+        .btn-danger:hover {
+            background: rgba(255, 71, 87, 0.2);
+            border-color: #ff4757;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(255, 71, 87, 0.4);
+        }
+        
+        .lyrics-editor {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 24px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .lyrics-editor:focus {
+            border-color: var(--text-accent);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+        }
+        
+        .lyrics-editor::placeholder {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .title-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            width: 100%;
+            padding: 8px 0;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .title-input:focus {
+            border-bottom-color: var(--text-accent);
+        }
+        
+        .title-input::placeholder {
+            color: var(--text-secondary);
+        }
+        
+        .default-title {
+            color: var(--text-secondary);
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            margin-bottom: 0;
+            opacity: 0.6;
+        }
+        
+        .scroll-container {
+            max-height: 80vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--text-accent) transparent;
+        }
+        
+        .scroll-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .scroll-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .scroll-container::-webkit-scrollbar-thumb {
+            background: var(--text-accent);
+            border-radius: 3px;
+        }
+        
+        .scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #00cc6a;
+        }
+        
+        .header-logo {
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 900;
+            font-size: 2.5rem;
+            letter-spacing: -0.05em;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .pulse-glow {
+            animation: pulseGlow 2s infinite;
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(0, 255, 136, 0.6); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto p-8">
+        <h1 class="header-logo">CROATOA</h1>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="glass-card p-6">
+                <h2 class="text-xl font-bold mb-6 neon-text flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    TRACK LIST
+                </h2>
+                <div id="song-list" class="scroll-container">
+                    <ul id="songs" class="list-none space-y-2">
+                    </ul>
+                </div>
+                <button id="add-song" class="btn-primary w-full mt-6 pulse-glow">
+                    <svg class="w-5 h-5 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                    Add New Track
+                </button>
+            </div>
+            <div class="col-span-1 lg:col-span-2 glass-card p-6">
+                <div class="mb-6">
+                    <input 
+                        id="song-title" 
+                        class="title-input" 
+                        placeholder="New Song" 
+                        style="display: block;"
+                    />
+                    <h2 id="default-title" class="default-title" style="display: none;">Select a track to view/edit lyrics...</h2>
+                </div>
+                <textarea id="lyrics" class="lyrics-editor w-full h-96" placeholder="Your lyrics will appear here...
+
+Start typing to create your masterpiece..."></textarea>
+                <div class="flex justify-end items-center mt-6 space-x-3">
+                    <button id="delete-song" class="btn-danger" title="Delete Track">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                    <div class="text-sm text-gray-400 flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        Auto-save enabled
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const songsElement = document.getElementById('songs');
+        const lyricsElement = document.getElementById('lyrics');
+        const addSongButton = document.getElementById('add-song');
+        const deleteSongButton = document.getElementById('delete-song');
+        const songTitleElement = document.getElementById('song-title');
+        const defaultTitleElement = document.getElementById('default-title');
+
+        let currentSongId = null;
+        let currentSongTitle = null;
+        let isNewSong = false;
+
+        // Initialize the title input for new song creation
+        function initializeNewSongMode() {
+            currentSongId = null;
+            currentSongTitle = null;
+            isNewSong = true;
+            songTitleElement.style.display = 'block';
+            songTitleElement.value = '';
+            songTitleElement.placeholder = 'New Song';
+            lyricsElement.value = '';
+            defaultTitleElement.style.display = 'none';
+            
+            // Remove active class from all song items
+            document.querySelectorAll('.song-item').forEach(item => {
+                item.classList.remove('active');
+            });
+        }
+
+        async function fetchSongs() {
+            try {
+                const response = await fetch('/api/v1/songs');
+                const songs = await response.json();
+                songsElement.innerHTML = '';
+                songs.forEach(song => {
+                    const li = document.createElement('li');
+                    li.textContent = song.title;
+                    li.classList.add('song-item', 'fade-in');
+                    li.onclick = () => {
+                        // Remove active class from all items
+                        document.querySelectorAll('.song-item').forEach(item => {
+                            item.classList.remove('active');
+                        });
+                        // Add active class to clicked item
+                        li.classList.add('active');
+                        loadSong(song.id);
+                    };
+                    songsElement.appendChild(li);
+                });
+            } catch (error) {
+                console.error('Error fetching songs:', error);
+            }
+        }
+
+        async function loadSong(songId) {
+            try {
+                const response = await fetch(`/api/v1/songs/${songId}`);
+                const song = await response.json();
+                lyricsElement.value = song.lyrics;
+                currentSongId = songId;
+                currentSongTitle = song.title;
+                isNewSong = false;
+
+                // Show the song title as editable input
+                defaultTitleElement.style.display = 'none';
+                songTitleElement.style.display = 'block';
+                songTitleElement.value = song.title;
+                songTitleElement.placeholder = 'Click to edit song title...';
+                songTitleElement.removeAttribute('readonly');
+                songTitleElement.disabled = false;
+
+                lyricsElement.oninput = async () => {
+                    await saveSong(currentSongId, lyricsElement.value);
+                };
+            } catch (error) {
+                console.error('Error loading song:', error);
+            }
+        }
+
+        async function saveSong(songId, lyrics, title = null) {
+            try {
+                const updateData = { lyrics };
+                if (title !== null) {
+                    updateData.title = title;
+                }
+                await fetch(`/api/v1/songs/${songId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                if (title !== null) {
+                    currentSongTitle = title;
+                    fetchSongs(); // Refresh the song list to show updated title
+                }
+            } catch (error) {
+                console.error('Error saving song:', error);
+            }
+        }
+
+        async function saveTitle(songId, newTitle) {
+            try {
+                await fetch(`/api/v1/songs/${songId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title: newTitle })
+                });
+                currentSongTitle = newTitle;
+                fetchSongs(); // Refresh the song list to show updated title
+            } catch (error) {
+                console.error('Error saving title:', error);
+            }
+        }
+
+        addSongButton.onclick = async () => {
+            try {
+                const response = await fetch('/api/v1/songs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title: 'New Track' })
+                });
+                const newSong = await response.json();
+                fetchSongs();
+                
+                // Load the new song and focus on the title for immediate editing
+                await loadSong(newSong.id);
+                
+                // Wait a moment for the DOM to update, then focus and select the title
+                setTimeout(() => {
+                    songTitleElement.focus();
+                    songTitleElement.select();
+                }, 100);
+                
+            } catch (error) {
+                console.error('Error adding song:', error);
+            }
+        };
+
+        deleteSongButton.onclick = async () => {
+            if (currentSongId !== null) {
+                try {
+                    await fetch(`/api/v1/songs/${currentSongId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    // Reset to new song mode
+                    initializeNewSongMode();
+                    
+                    fetchSongs();
+                } catch (error) {
+                    console.error('Error deleting song:', error);
+                }
+            }
+        };
+
+        // Add event listeners for title editing
+        songTitleElement.onclick = () => {
+            if (songTitleElement.placeholder === 'New Song') {
+                songTitleElement.select();
+            }
+        };
+
+        songTitleElement.onblur = async () => {
+            if (isNewSong && songTitleElement.value.trim() !== '') {
+                // Create new song
+                try {
+                    const response = await fetch('/api/v1/songs', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ title: songTitleElement.value.trim() })
+                    });
+                    const newSong = await response.json();
+                    currentSongId = newSong.id;
+                    currentSongTitle = newSong.title;
+                    isNewSong = false;
+                    songTitleElement.placeholder = 'Click to edit song title...';
+                    fetchSongs();
+                    
+                    // Set up lyrics auto-save
+                    lyricsElement.oninput = async () => {
+                        await saveSong(currentSongId, lyricsElement.value);
+                    };
+                } catch (error) {
+                    console.error('Error creating song:', error);
+                }
+            } else if (currentSongId && songTitleElement.value.trim() !== '' && songTitleElement.value !== currentSongTitle) {
+                await saveTitle(currentSongId, songTitleElement.value.trim());
+            }
+        };
+
+        songTitleElement.onkeypress = async (e) => {
+            if (e.key === 'Enter') {
+                songTitleElement.blur();
+            }
+        };
+
+        // Add input event listener for real-time title updates
+        songTitleElement.oninput = () => {
+            // Optional: Add debouncing here if needed
+        };
+
+        // Initialize app
+        initializeNewSongMode();
+        fetchSongs();
+    </script>
+</body>
+</html>
