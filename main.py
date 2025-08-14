@@ -231,6 +231,158 @@ def read_root():
     """Serve the main HTML page"""
     return FileResponse("static/index.html")
 
+@app.get("/share/{song_id}")
+def share_song(song_id: int):
+    """Serve a shared song page"""
+    logger.info(f"Serving shared song with ID: {song_id}")
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM songs WHERE id = ?", (song_id,))
+    song = cursor.fetchone()
+    conn.close()
+    
+    if not song:
+        logger.warning(f"Song with ID {song_id} not found for sharing")
+        raise HTTPException(status_code=404, detail="Song not found")
+    
+    song_dict = dict(song)
+    
+    # Create HTML content for the shared song
+    html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{song_dict['title']} - CROATOA</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {{
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --text-accent: #00ff88;
+            --border-color: #333;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }}
+        
+        * {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }}
+        
+        body {{
+            background: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(0, 255, 136, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 0, 136, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(0, 136, 255, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }}
+        
+        .glass-card {{
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }}
+        
+        .neon-text {{
+            color: var(--text-accent);
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }}
+        
+        .lyrics-display {{
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 24px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 70vh;
+            overflow-y: auto;
+        }}
+        
+        .header-logo {{
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 900;
+            font-size: 2.5rem;
+            letter-spacing: -0.05em;
+            text-align: center;
+            margin-bottom: 2rem;
+        }}
+        
+        .btn-secondary {{
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }}
+        
+        .btn-secondary:hover {{
+            background: rgba(0, 255, 136, 0.1);
+            border-color: var(--text-accent);
+            transform: translateY(-2px);
+        }}
+    </style>
+</head>
+<body>
+    <div class="container mx-auto p-8 max-w-4xl">
+        <div class="text-center mb-8">
+            <h1 class="header-logo">CROATOA</h1>
+            <a href="/" class="btn-secondary">
+                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+                </svg>
+                Back to Song Manager
+            </a>
+        </div>
+        
+        <div class="glass-card p-8">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold neon-text mb-2">{song_dict['title']}</h2>
+                <p class="text-gray-400">by CROATOA</p>
+            </div>
+            
+            <div class="lyrics-display">
+{song_dict['lyrics'] if song_dict['lyrics'] else 'No lyrics available for this song.'}
+            </div>
+            
+            <div class="text-center mt-6 text-sm text-gray-500">
+                <p>Created: {song_dict['created_at']}</p>
+                {f"<p>Last updated: {song_dict['updated_at']}</p>" if song_dict['updated_at'] != song_dict['created_at'] else ""}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+    """
+    
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html_content)
+
 # Initialize database on startup
 @app.on_event("startup")
 def startup_event():

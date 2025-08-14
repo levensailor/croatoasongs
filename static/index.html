@@ -146,6 +146,28 @@
             box-shadow: 0 0 15px rgba(255, 71, 87, 0.4);
         }
         
+        .btn-share {
+            background: rgba(0, 136, 255, 0.1);
+            color: #0088ff;
+            border: 1px solid rgba(0, 136, 255, 0.3);
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+        }
+        
+        .btn-share:hover {
+            background: rgba(0, 136, 255, 0.2);
+            border-color: #0088ff;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(0, 136, 255, 0.4);
+        }
+        
         .lyrics-editor {
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -328,9 +350,19 @@
                     />
                     <h2 id="default-title" class="default-title flex-1" style="display: none;">Select a track to view/edit lyrics...</h2>
                     <div class="flex items-center space-x-3">
+                        <button id="share-song" class="btn-share" title="Share Track">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
+                            </svg>
+                        </button>
                         <button id="delete-song" class="btn-danger" title="Delete Track">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <button id="print-song" class="btn-primary" title="Print Track">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M5 4v3h10V4H5zm11 5H4a1 1 0 00-1 1v4a1 1 0 001 1h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a1 1 0 001-1v-4a1 1 0 00-1-1z"/>
                             </svg>
                         </button>
                         <div class="text-sm text-gray-400 flex items-center">
@@ -356,16 +388,18 @@ Start typing to create your masterpiece..."></textarea>
         const songTitleElement = document.getElementById('song-title');
         const defaultTitleElement = document.getElementById('default-title');
         const sortDropdown = document.getElementById('sort-dropdown');
+        const printSongButton = document.getElementById('print-song');
+        const shareSongButton = document.getElementById('share-song');
 
         let currentSongId = null;
-        let currentSongTitle = null;
+        let selectedSong = null;
         let isNewSong = false;
         let allSongs = [];
 
         // Initialize the title input for new song creation
         function initializeNewSongMode() {
             currentSongId = null;
-            currentSongTitle = null;
+            selectedSong = null;
             isNewSong = true;
             songTitleElement.style.display = 'block';
             songTitleElement.value = '';
@@ -433,7 +467,11 @@ Start typing to create your masterpiece..."></textarea>
                 const song = await response.json();
                 lyricsElement.value = song.lyrics;
                 currentSongId = songId;
-                currentSongTitle = song.title;
+                selectedSong = {
+                    lyrics: song.lyrics,
+                    song_name: song.title,
+                    band_name: 'CROATOA'
+                };
                 isNewSong = false;
 
                 // Show the song title as editable input
@@ -466,7 +504,7 @@ Start typing to create your masterpiece..."></textarea>
                     body: JSON.stringify(updateData)
                 });
                 if (title !== null) {
-                    currentSongTitle = title;
+                    selectedSong.song_name = title;
                     fetchSongs(); // Refresh the song list to show updated title
                 }
             } catch (error) {
@@ -483,7 +521,7 @@ Start typing to create your masterpiece..."></textarea>
                     },
                     body: JSON.stringify({ title: newTitle })
                 });
-                currentSongTitle = newTitle;
+                selectedSong.song_name = newTitle;
                 fetchSongs(); // Refresh the song list to show updated title
             } catch (error) {
                 console.error('Error saving title:', error);
@@ -500,90 +538,207 @@ Start typing to create your masterpiece..."></textarea>
                     body: JSON.stringify({ title: 'New Track' })
                 });
                 const newSong = await response.json();
-                fetchSongs();
-                
-                // Load the new song and focus on the title for immediate editing
-                await loadSong(newSong.id);
-                
-                // Wait a moment for the DOM to update, then focus and select the title
-                setTimeout(() => {
-                    songTitleElement.focus();
-                    songTitleElement.select();
-                }, 100);
-                
+                await fetchSongs();
+                loadSong(newSong.id);
             } catch (error) {
                 console.error('Error adding song:', error);
             }
         };
 
         deleteSongButton.onclick = async () => {
-            if (currentSongId !== null) {
+            if (!currentSongId) {
+                alert('Please select a song to delete.');
+                return;
+            }
+
+            if (confirm(`Are you sure you want to delete "${selectedSong.song_name}"?`)) {
                 try {
                     await fetch(`/api/v1/songs/${currentSongId}`, {
                         method: 'DELETE'
                     });
-                    
-                    // Reset to new song mode
                     initializeNewSongMode();
-                    
-                    fetchSongs();
+                    await fetchSongs();
                 } catch (error) {
                     console.error('Error deleting song:', error);
                 }
             }
         };
-
-        // Add event listeners for title editing
-        songTitleElement.onclick = () => {
-            if (songTitleElement.placeholder === 'New Song') {
-                songTitleElement.select();
+        
+        const printSong = () => {
+            if (!selectedSong) {
+                alert('Please select a song to print.');
+                return;
             }
+
+            const printWindow = window.open('', '_blank');
+
+            const lyricsLength = selectedSong.lyrics.length;
+            let fontSize = 14;
+            let lineHeight = 1.5;
+            let margin = 1;
+            let useColumns = false;
+
+            if (lyricsLength > 2000) {
+                fontSize = 12;
+                lineHeight = 1.3;
+                margin = 0.75;
+                useColumns = true;
+            } else if (lyricsLength > 1000) {
+                fontSize = 12;
+                lineHeight = 1.3;
+                margin = 0.75;
+            } else if (lyricsLength > 500) {
+                fontSize = 13;
+                lineHeight = 1.4;
+                margin = 0.875;
+            }
+
+            const printHTML = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${selectedSong.song_name} - ${selectedSong.band_name}</title>
+                    <style>
+                    @page {
+                        size: letter;
+                        margin: ${margin}in;
+                    }
+                    body {
+                        font-family: monospace;
+                        line-height: ${lineHeight};
+                        font-size: ${fontSize}px;
+                        margin: 0;
+                        padding: 0;
+                        height: calc(11in - ${margin * 2}in);
+                        width: calc(8.5in - ${margin * 2}in);
+                    }
+                    .header {
+                        text-align: center;
+                        margin-bottom: 1.5em;
+                        padding-bottom: 0.5em;
+                        border-bottom: 1px solid #ccc;
+                        column-span: all;
+                    }
+                    .song-title {
+                        font-size: ${fontSize + 4}px;
+                        font-weight: bold;
+                        margin-bottom: 0.5em;
+                    }
+                    .band-name {
+                        font-size: ${fontSize + 2}px;
+                        color: #666;
+                    }
+                    .lyrics {
+                        white-space: pre-wrap;
+                        margin: 0;
+                        padding: 0;
+                        height: calc(100% - 4em);
+                        overflow: hidden;
+                        ${useColumns ? `
+                        column-count: 2;
+                        column-gap: 2em;
+                        column-fill: auto;
+                        ` : ''}
+                    }
+                    .lyrics p {
+                        margin: 0;
+                        break-inside: avoid;
+                    }
+                    @media print {
+                        body {
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+                    }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="song-title">${selectedSong.song_name}</div>
+                        <div class="band-name">${selectedSong.band_name}</div>
+                    </div>
+                    <div class="lyrics">
+                        ${selectedSong.lyrics.split('\n').map(line => `<p>${line || '&nbsp;'}</p>`).join('')}
+                    </div>
+                    <script>
+                        const lyricsDiv = document.querySelector('.lyrics');
+                        const body = document.body;
+                        let currentFontSize = ${fontSize};
+
+                        const isOverflowing = () => {
+                            return lyricsDiv.scrollHeight > lyricsDiv.clientHeight || lyricsDiv.scrollWidth > lyricsDiv.clientWidth;
+                        };
+
+                        while (isOverflowing() && currentFontSize > 6) {
+                            currentFontSize -= 0.5;
+                            body.style.fontSize = currentFontSize + 'px';
+                            document.querySelector('.song-title').style.fontSize = (currentFontSize + 4) + 'px';
+                            document.querySelector('.band-name').style.fontSize = (currentFontSize + 2) + 'px';
+                        }
+                        
+                        setTimeout(function() {
+                            window.print();
+                        }, 100);
+
+                        window.onafterprint = function() {
+                            window.close();
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `;
+
+            printWindow.document.write(printHTML);
+            printWindow.document.close();
+            printWindow.focus();
         };
 
-        songTitleElement.onblur = async () => {
-            if (isNewSong && songTitleElement.value.trim() !== '') {
-                // Create new song
-                try {
-                    const response = await fetch('/api/v1/songs', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ title: songTitleElement.value.trim() })
-                    });
-                    const newSong = await response.json();
-                    currentSongId = newSong.id;
-                    currentSongTitle = newSong.title;
-                    isNewSong = false;
-                    songTitleElement.placeholder = 'Click to edit song title...';
-                    fetchSongs();
+        printSongButton.onclick = printSong;
+
+        const shareSong = () => {
+            if (!currentSongId) {
+                alert('Please select a song to share.');
+                return;
+            }
+
+            const shareUrl = `${window.location.origin}/share/${currentSongId}`;
+            
+            // Try to copy to clipboard
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    // Show temporary success message
+                    const originalButton = shareSongButton.innerHTML;
+                    shareSongButton.innerHTML = `
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    `;
+                    shareSongButton.style.color = '#00ff88';
+                    shareSongButton.style.borderColor = 'rgba(0, 255, 136, 0.3)';
+                    shareSongButton.style.background = 'rgba(0, 255, 136, 0.1)';
                     
-                    // Set up lyrics auto-save
-                    lyricsElement.oninput = async () => {
-                        await saveSong(currentSongId, lyricsElement.value);
-                    };
-                } catch (error) {
-                    console.error('Error creating song:', error);
-                }
-            } else if (currentSongId && songTitleElement.value.trim() !== '' && songTitleElement.value !== currentSongTitle) {
-                await saveTitle(currentSongId, songTitleElement.value.trim());
+                    setTimeout(() => {
+                        shareSongButton.innerHTML = originalButton;
+                        shareSongButton.style.color = '#0088ff';
+                        shareSongButton.style.borderColor = 'rgba(0, 136, 255, 0.3)';
+                        shareSongButton.style.background = 'rgba(0, 136, 255, 0.1)';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                    // Fallback: show prompt with URL
+                    prompt('Copy this link to share the song:', shareUrl);
+                });
+            } else {
+                // Fallback: show prompt with URL
+                prompt('Copy this link to share the song:', shareUrl);
             }
         };
 
-        songTitleElement.onkeypress = async (e) => {
-            if (e.key === 'Enter') {
-                songTitleElement.blur();
-            }
-        };
+        shareSongButton.onclick = shareSong;
 
-        // Add input event listener for real-time title updates
-        songTitleElement.oninput = () => {
-            // Optional: Add debouncing here if needed
-        };
-
-        // Initialize app
-        initializeNewSongMode();
+        // Initial fetch
         fetchSongs();
+        initializeNewSongMode();
     </script>
 </body>
 </html>
